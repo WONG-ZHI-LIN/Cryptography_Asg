@@ -7,6 +7,8 @@ import java.time.Instant;
 import java.math.BigInteger;
 import javax.crypto.spec.SecretKeySpec;
 import javax.crypto.KeyGenerator;
+import javax.crypto.Cipher;
+import javax.crypto.spec.IvParameterSpec;
 
 
 
@@ -309,9 +311,14 @@ private static String removeArtificialX(String text) {
                 case 3:
                     productCipherMenu(scanner);
                     break;
-                case 4:
-                    ManualRSAEncryption.performHybridEncryption(scanner);
+                    case 4:
+                    try {
+                        ManualRSAEncryption.performHybridEncryption(scanner);
+                    } catch (Exception e) {
+                        System.err.println("An error occurred during hybrid encryption: " + e.getMessage());
+                    }
                     break;
+                
                 case 5:
                     System.out.println("Exiting...");
                      break;
@@ -373,8 +380,7 @@ private static String removeArtificialX(String text) {
                             }
                         }
                     }
-                
-                    private static void productCipherMenu(Scanner scanner) {
+                private static void productCipherMenu(Scanner scanner) {
                         while (true) {
                             System.out.println("\nProduct Cipher (Playfair + Rail Fence)");
                             System.out.println("1. Encrypt");
@@ -400,30 +406,25 @@ private static String removeArtificialX(String text) {
                             }
                         }
                     }
-                }
-                
-                    // RSA and AES Hybrid Encryption Class
-                class ManualRSAEncryption {  
-                    private static final int BIT_LENGTH = 1024;
-                    private static final SecureRandom random = new SecureRandom();
-                    private BigInteger n, e, d;
-                
-                    public ManualRSAEncryption() {
-                        BigInteger p = BigInteger.probablePrime(BIT_LENGTH / 2, random);
-                        BigInteger q = BigInteger.probablePrime(BIT_LENGTH / 2, random);
-                        n = p.multiply(q);
-                        BigInteger phi = (p.subtract(BigInteger.ONE)).multiply(q.subtract(BigInteger.ONE));
-                
-                        e = new BigInteger("65537");
-                        d = e.modInverse(phi);
-                    }
-                
-                    public static void generateRSAKeyPair(Scanner scanner) {
-                        // TODO Auto-generated method stub
-                        throw new UnsupportedOperationException("Unimplemented method 'generateRSAKeyPair'");
-                    }
-                
-                    public BigInteger encryptRSA(BigInteger message) {
+ }
+
+   // RSA and AES Hybrid Encryption Class
+   class ManualRSAEncryption {
+    private static final int BIT_LENGTH = 1024;
+    private static final SecureRandom random = new SecureRandom();
+    private BigInteger n, e, d;
+
+    public ManualRSAEncryption() {
+        BigInteger p = BigInteger.probablePrime(BIT_LENGTH / 2, random);
+        BigInteger q = BigInteger.probablePrime(BIT_LENGTH / 2, random);
+        n = p.multiply(q);
+        BigInteger phi = (p.subtract(BigInteger.ONE)).multiply(q.subtract(BigInteger.ONE));
+
+        e = new BigInteger("65537");
+        d = e.modInverse(phi);
+    }
+
+    public BigInteger encryptRSA(BigInteger message) {
         return message.modPow(e, n);
     }
 
@@ -438,91 +439,126 @@ private static String removeArtificialX(String text) {
     public BigInteger getModulus() {
         return n;
     }
+    // AES Encryption Method
+private static byte[] encryptAES(byte[] plaintext, SecretKey key) throws Exception {
+    byte[] ivBytes = new byte[16];
+    new SecureRandom().nextBytes(ivBytes);  // Use random IV for security
+    IvParameterSpec iv = new IvParameterSpec(ivBytes);
 
-    public static void performHybridEncryption(Scanner scanner) {
-        System.out.println("\n======================================================");
-        System.out.println(" SIMULATING PERSON A & B COMMUNICATION USING RSA & AES ");
-        System.out.println("========================================================");
+    Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+    cipher.init(Cipher.ENCRYPT_MODE, key, iv);
 
-        // Generate RSA Keys
-        ManualRSAEncryption rsa = new ManualRSAEncryption();
-        BigInteger publicKeyB = rsa.getPublicKey();
-        BigInteger modulusB = rsa.getModulus();
+    byte[] encrypted = cipher.doFinal(plaintext);
 
-        // Generate AES Key
-        SecretKey aesKey = generateAESKey();
-        System.out.println("\n[Person A] AES Key (Base64): " + Base64.getEncoder().encodeToString(aesKey.getEncoded()));
+    // Combine IV and Ciphertext
+    byte[] combined = new byte[ivBytes.length + encrypted.length];
+    System.arraycopy(ivBytes, 0, combined, 0, ivBytes.length);
+    System.arraycopy(encrypted, 0, combined, ivBytes.length, encrypted.length);
+    return combined;
+}
 
-        // Encrypt AES Key using RSA
-        BigInteger aesKeyBigInt = new BigInteger(aesKey.getEncoded());
-        BigInteger encryptedAESKey = aesKeyBigInt.modPow(publicKeyB, modulusB);
-        System.out.println("[Person A] Encrypted AES Key: " + encryptedAESKey);
-
-        // Decrypt AES Key using RSA
-        BigInteger decryptedAESKeyBigInt = encryptedAESKey.modPow(rsa.d, rsa.n);
-        SecretKey originalAESKey = new SecretKeySpec(decryptedAESKeyBigInt.toByteArray(), "AES");
-        System.out.println("[Person B] Decrypted AES Key (Base64): " + Base64.getEncoder().encodeToString(originalAESKey.getEncoded()));
-
-        // Encrypt Message Using AES
-        System.out.print("\n[Person A] Enter message to encrypt: ");
-        String message = scanner.nextLine();
-        byte[] encryptedMessage = encryptAES(message.getBytes(), originalAESKey);
-        System.out.println("[Person A] Encrypted Message (Base64): " + Base64.getEncoder().encodeToString(encryptedMessage));
-
-        // Decrypt the Message
-        byte[] decryptedMessage = decryptAES(encryptedMessage, originalAESKey);
-        System.out.println("[Person B] Decrypted Message: " + new String(decryptedMessage));
-
-        // Simulate Bit Errors
-        simulateBitError(encryptedMessage, originalAESKey);
+// AES Decryption Method (with input validation)
+private static byte[] decryptAES(byte[] ciphertext, SecretKey key) throws Exception {
+    if (ciphertext.length < 16) {
+        throw new IllegalArgumentException("Ciphertext too short, cannot extract IV.");
     }
 
-    private static SecretKey generateAESKey() {
-        try {
-            KeyGenerator keyGen = KeyGenerator.getInstance("AES");
-            keyGen.init(128);
-            return keyGen.generateKey();
-        } catch (Exception e) {
-            throw new RuntimeException("Error generating AES key", e);
-        }
-    }
+    byte[] iv = new byte[16];
+    System.arraycopy(ciphertext, 0, iv, 0, iv.length);
+    IvParameterSpec ivSpec = new IvParameterSpec(iv);
 
-    private static byte[] encryptAES(byte[] plaintext, SecretKey key) {
-        byte[] encrypted = new byte[plaintext.length];
-        for (int i = 0; i < plaintext.length; i++) {
-            encrypted[i] = (byte) (plaintext[i] ^ key.getEncoded()[i % key.getEncoded().length]); 
-        }
-        return encrypted;
-    }
+    Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+    cipher.init(Cipher.DECRYPT_MODE, key, ivSpec);
 
-    private static byte[] decryptAES(byte[] ciphertext, SecretKey key) {
-        return encryptAES(ciphertext, key);
-    }
-
-    private static void simulateBitError(byte[] ciphertext, SecretKey key) {
-        byte[] corruptedCiphertext = ciphertext.clone();
-        int startCorrupt = 4;  // Corrupting the 5th byte onward
-        int blockSize = 16;  // AES block size
-
-        System.out.println("\n===================================");
-        System.out.println(" SIMULATING BIT ERROR IN CIPHERTEXT");
-        System.out.println("=====================================");
-
-        // Introduce bit errors across one full AES block
-        for (int i = startCorrupt; i < startCorrupt + blockSize && i < corruptedCiphertext.length; i++) {
-            corruptedCiphertext[i] ^= 0xFF; // Flip all bits in this byte
-        }
-    
-        System.out.println("[Person A] Original Ciphertext (Base64): " + Base64.getEncoder().encodeToString(ciphertext));
-        System.out.println("[Person B] Corrupted Ciphertext (Base64): " + Base64.getEncoder().encodeToString(corruptedCiphertext));
-        System.out.println("[Person B] Bit error introduced in block starting at byte position: " + startCorrupt + "\n");
-    
-        System.out.println("Explanation: AES encryption works in blocks (16 bytes each).");
-        System.out.println("Flipping bits in a block will cause full corruption in that block.");
-        System.out.println("This results in garbled output or total decryption failure.\n");
-    
-        //  Decrypt the corrupted message
-        byte[] corruptedDecryption = decryptAES(corruptedCiphertext, key);
-        System.out.println("[Person B] Decrypted Message (With Bit Error): " + new String(corruptedDecryption) + "\n");
+    return cipher.doFinal(ciphertext, iv.length, ciphertext.length - iv.length);
+}
+// Fix RSA-AES Key Exchange Conversion Issue
+private static SecretKey generateAESKey() {
+    try {
+        javax.crypto.KeyGenerator keyGen = javax.crypto.KeyGenerator.getInstance("AES");
+        keyGen.init(128);
+        return keyGen.generateKey();
+    } catch (Exception e) {
+        throw new RuntimeException("Error generating AES key", e);
     }
 }
+
+// Change from private to public to allow calling from main()
+public static void performHybridEncryption(java.util.Scanner scanner) throws Exception {
+    System.out.println("\n======================================================");
+    System.out.println(" SIMULATING PERSON A & B COMMUNICATION USING RSA & AES ");
+    System.out.println("========================================================");
+
+    // Generate RSA Keys
+    ManualRSAEncryption rsa = new ManualRSAEncryption();
+    BigInteger publicKeyB = rsa.getPublicKey();
+    BigInteger modulusB = rsa.getModulus();
+
+    // Generate AES Key
+    SecretKey aesKey = generateAESKey();
+    String aesKeyBase64 = Base64.getEncoder().encodeToString(aesKey.getEncoded());
+    BigInteger aesKeyBigInt = new BigInteger(1, aesKeyBase64.getBytes());
+    System.out.println("\n[Person A] AES Key (Base64): " + aesKeyBase64);
+
+    // Encrypt AES Key using RSA
+    BigInteger encryptedAESKey = aesKeyBigInt.modPow(publicKeyB, modulusB);
+    System.out.println("[Person A] Encrypted AES Key: " + encryptedAESKey);
+
+    // Decrypt AES Key using RSA
+    BigInteger decryptedAESKeyBigInt = encryptedAESKey.modPow(rsa.d, rsa.n);
+    byte[] decryptedBytes = decryptedAESKeyBigInt.toByteArray();
+    String decryptedAESBase64 = new String(decryptedBytes);
+    SecretKey originalAESKey = new SecretKeySpec(Base64.getDecoder().decode(decryptedAESBase64), "AES");
+    System.out.println("[Person B] Decrypted AES Key (Base64): " + decryptedAESBase64);
+
+    // Encrypt Message Using AES
+    System.out.print("\n[Person A] Enter message to encrypt: ");
+    String message = scanner.nextLine();
+    byte[] encryptedMessage = encryptAES(message.getBytes(), originalAESKey);
+    System.out.println("[Person A] Encrypted Message (Base64): " + Base64.getEncoder().encodeToString(encryptedMessage));
+
+    // Decrypt the Message
+    byte[] decryptedMessage = decryptAES(encryptedMessage, originalAESKey);
+    System.out.println("[Person B] Decrypted Message: " + new String(decryptedMessage));
+
+    
+    simulateBitError(encryptedMessage, originalAESKey.getEncoded());
+}
+
+//  Simulating Bit Error in Ciphertext
+private static void simulateBitError(byte[] ciphertext, byte[] keyBytes) {
+    byte[] corruptedCiphertext = ciphertext.clone();
+    int blockSize = 16;  // AES block size
+    int startCorrupt = 4;  // Corrupting from the 5th byte onward
+
+    System.out.println("\n===================================");
+    System.out.println(" SIMULATING BIT ERROR IN CIPHERTEXT...");
+    System.out.println("=====================================\n");
+
+    // Introduce bit errors across one full AES block
+    for (int i = startCorrupt; i < startCorrupt + blockSize && i < corruptedCiphertext.length; i++) {
+        corruptedCiphertext[i] ^= 0xFF; // Flip all bits in this byte
+    }
+
+    System.out.println("[Person A] Original Ciphertext (Base64): " + Base64.getEncoder().encodeToString(ciphertext));
+    System.out.println("[Person B] Corrupted Ciphertext (Base64): " + Base64.getEncoder().encodeToString(corruptedCiphertext));
+    System.out.println("[Person B] Bit error introduced in block starting at byte position: " + startCorrupt + "\n");
+
+    System.out.println("Explanation: AES encryption works in blocks (16 bytes each).");
+    System.out.println("Flipping bits in a block will cause full corruption in that block.");
+    System.out.println("This results in garbled output or total decryption failure.\n");
+
+    // Convert the AES key bytes to a SecretKey object
+    SecretKey secretKey = new SecretKeySpec(keyBytes, "AES");
+
+    //  Decrypt the corrupted message
+    try {
+        byte[] corruptedDecryption = decryptAES(corruptedCiphertext, secretKey);
+        System.out.println("[Person B] Decrypted Message (With Bit Error): " + new String(corruptedDecryption) + "\n");
+    } catch (Exception e) {
+        System.out.println("[Person B] Decryption failed due to bit errors. The recovered message is unreadable.");
+    }
+
+    System.out.println("====================================\n");
+}
+   }
