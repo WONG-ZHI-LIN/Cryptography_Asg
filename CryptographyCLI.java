@@ -494,7 +494,7 @@ class ManualRSAEncryption {
     // Change from private to public to allow calling from main()
     public static void performHybridEncryption(java.util.Scanner scanner) throws Exception {
         System.out.println("\n======================================================");
-        System.out.println(" SIMULATING PERSON A & B COMMUNICATION USING RSA & AES ");
+        System.out.println(" SIMULATING PERSON A & B COMMUNICATION USING RSA & AES (CBC) ");
         System.out.println("========================================================");
 
         // Generate RSA Keys
