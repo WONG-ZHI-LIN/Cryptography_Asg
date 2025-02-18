@@ -1,9 +1,14 @@
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.Scanner;
+import javax.crypto.SecretKey;
 import java.time.Duration;
 import java.time.Instant;
 import java.math.BigInteger;
+import javax.crypto.spec.SecretKeySpec;
+import javax.crypto.KeyGenerator;
+
+
 
 
 public class CryptographyCLI {
@@ -280,7 +285,7 @@ private static String removeArtificialX(String text) {
         return playfairDecrypted;
     }
 
-    
+
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
         while (true) {
@@ -305,215 +310,219 @@ private static String removeArtificialX(String text) {
                     productCipherMenu(scanner);
                     break;
                 case 4:
-                ManualRSAEncryption.generateRSAKeyPair(scanner);
-                break;
+                    ManualRSAEncryption.performHybridEncryption(scanner);
+                    break;
                 case 5:
                     System.out.println("Exiting...");
-                    break;
+                     break;
                 default:
                     System.out.println("Invalid choice, try again.");
-            }
+                            }
+                        }
+                    }
+                
+                
+                    private static void playfairMenu(Scanner scanner) {
+                        while (true) {
+                            System.out.println("\nPlayfair Cipher");
+                            System.out.println("1. Encrypt");
+                            System.out.println("2. Decrypt");
+                            System.out.println("3. Back");
+                            System.out.print("Enter your choice: ");
+                            int choice = scanner.nextInt();
+                            scanner.nextLine();
+                
+                            if (choice == 3) return;
+                
+                            System.out.print("Enter text: ");
+                            String text = scanner.nextLine();
+                            System.out.print("Enter Playfair key: ");
+                            String key = scanner.nextLine();
+                
+                            if (choice == 1) {
+                                System.out.println("Encrypted: " + playfairCipherEncrypt(text, key));
+                            } else if (choice == 2) {
+                                System.out.println("Decrypted: " + playfairCipherDecrypt(text, key));
+                            } else {
+                                System.out.println("Invalid choice, try again.");
+                            }
+                        }
+                    }
+                
+                    private static void railFenceMenu(Scanner scanner) {
+                        while (true) {
+                            System.out.println("\nRail Fence Cipher");
+                            System.out.println("1. Encrypt");
+                            System.out.println("2. Decrypt");
+                            System.out.println("3. Back");
+                            System.out.print("Enter your choice: ");
+                            int choice = scanner.nextInt();
+                            scanner.nextLine();
+                
+                            if (choice == 3) return;
+                
+                            System.out.print("Enter text: ");
+                            String text = scanner.nextLine();
+                
+                            if (choice == 1) {
+                                System.out.println("Encrypted: " + railFenceEncrypt(text));
+                            } else if (choice == 2) {
+                                System.out.println("Decrypted: " + railFenceDecrypt(text));
+                            } else {
+                                System.out.println("Invalid choice, try again.");
+                            }
+                        }
+                    }
+                
+                    private static void productCipherMenu(Scanner scanner) {
+                        while (true) {
+                            System.out.println("\nProduct Cipher (Playfair + Rail Fence)");
+                            System.out.println("1. Encrypt");
+                            System.out.println("2. Decrypt");
+                            System.out.println("3. Back");
+                            System.out.print("Enter your choice: ");
+                            int choice = scanner.nextInt();
+                            scanner.nextLine();
+                
+                            if (choice == 3) return;
+                
+                            System.out.print("Enter text: ");
+                            String text = scanner.nextLine();
+                            System.out.print("Enter Playfair key: ");
+                            String key = scanner.nextLine();
+                
+                            if (choice == 1) {
+                                System.out.println("Encrypted: " + productCipherEncrypt(text, key));
+                            } else if (choice == 2) {
+                                System.out.println("Decrypted: " + productCipherDecrypt(text, key));
+                            } else {
+                                System.out.println("Invalid choice, try again.");
+                            }
+                        }
+                    }
+                }
+                
+                    // RSA and AES Hybrid Encryption Class
+                class ManualRSAEncryption {  
+                    private static final int BIT_LENGTH = 1024;
+                    private static final SecureRandom random = new SecureRandom();
+                    private BigInteger n, e, d;
+                
+                    public ManualRSAEncryption() {
+                        BigInteger p = BigInteger.probablePrime(BIT_LENGTH / 2, random);
+                        BigInteger q = BigInteger.probablePrime(BIT_LENGTH / 2, random);
+                        n = p.multiply(q);
+                        BigInteger phi = (p.subtract(BigInteger.ONE)).multiply(q.subtract(BigInteger.ONE));
+                
+                        e = new BigInteger("65537");
+                        d = e.modInverse(phi);
+                    }
+                
+                    public static void generateRSAKeyPair(Scanner scanner) {
+                        // TODO Auto-generated method stub
+                        throw new UnsupportedOperationException("Unimplemented method 'generateRSAKeyPair'");
+                    }
+                
+                    public BigInteger encryptRSA(BigInteger message) {
+        return message.modPow(e, n);
+    }
+
+    public BigInteger decryptRSA(BigInteger ciphertext) {
+        return ciphertext.modPow(d, n);
+    }
+
+    public BigInteger getPublicKey() {
+        return e;
+    }
+
+    public BigInteger getModulus() {
+        return n;
+    }
+
+    public static void performHybridEncryption(Scanner scanner) {
+        System.out.println("\n======================================================");
+        System.out.println(" SIMULATING PERSON A & B COMMUNICATION USING RSA & AES ");
+        System.out.println("========================================================");
+
+        // Generate RSA Keys
+        ManualRSAEncryption rsa = new ManualRSAEncryption();
+        BigInteger publicKeyB = rsa.getPublicKey();
+        BigInteger modulusB = rsa.getModulus();
+
+        // Generate AES Key
+        SecretKey aesKey = generateAESKey();
+        System.out.println("\n[Person A] AES Key (Base64): " + Base64.getEncoder().encodeToString(aesKey.getEncoded()));
+
+        // Encrypt AES Key using RSA
+        BigInteger aesKeyBigInt = new BigInteger(aesKey.getEncoded());
+        BigInteger encryptedAESKey = aesKeyBigInt.modPow(publicKeyB, modulusB);
+        System.out.println("[Person A] Encrypted AES Key: " + encryptedAESKey);
+
+        // Decrypt AES Key using RSA
+        BigInteger decryptedAESKeyBigInt = encryptedAESKey.modPow(rsa.d, rsa.n);
+        SecretKey originalAESKey = new SecretKeySpec(decryptedAESKeyBigInt.toByteArray(), "AES");
+        System.out.println("[Person B] Decrypted AES Key (Base64): " + Base64.getEncoder().encodeToString(originalAESKey.getEncoded()));
+
+        // Encrypt Message Using AES
+        System.out.print("\n[Person A] Enter message to encrypt: ");
+        String message = scanner.nextLine();
+        byte[] encryptedMessage = encryptAES(message.getBytes(), originalAESKey);
+        System.out.println("[Person A] Encrypted Message (Base64): " + Base64.getEncoder().encodeToString(encryptedMessage));
+
+        // Decrypt the Message
+        byte[] decryptedMessage = decryptAES(encryptedMessage, originalAESKey);
+        System.out.println("[Person B] Decrypted Message: " + new String(decryptedMessage));
+
+        // Simulate Bit Errors
+        simulateBitError(encryptedMessage, originalAESKey);
+    }
+
+    private static SecretKey generateAESKey() {
+        try {
+            KeyGenerator keyGen = KeyGenerator.getInstance("AES");
+            keyGen.init(128);
+            return keyGen.generateKey();
+        } catch (Exception e) {
+            throw new RuntimeException("Error generating AES key", e);
         }
     }
 
-    private static void playfairMenu(Scanner scanner) {
-        while (true) {
-            System.out.println("\nPlayfair Cipher");
-            System.out.println("1. Encrypt");
-            System.out.println("2. Decrypt");
-            System.out.println("3. Back");
-            System.out.print("Enter your choice: ");
-            int choice = scanner.nextInt();
-            scanner.nextLine();
-
-            if (choice == 3) return;
-
-            System.out.print("Enter text: ");
-            String text = scanner.nextLine();
-            System.out.print("Enter Playfair key: ");
-            String key = scanner.nextLine();
-
-            if (choice == 1) {
-                System.out.println("Encrypted: " + playfairCipherEncrypt(text, key));
-            } else if (choice == 2) {
-                System.out.println("Decrypted: " + playfairCipherDecrypt(text, key));
-            } else {
-                System.out.println("Invalid choice, try again.");
-            }
+    private static byte[] encryptAES(byte[] plaintext, SecretKey key) {
+        byte[] encrypted = new byte[plaintext.length];
+        for (int i = 0; i < plaintext.length; i++) {
+            encrypted[i] = (byte) (plaintext[i] ^ key.getEncoded()[i % key.getEncoded().length]); 
         }
+        return encrypted;
     }
 
-    private static void railFenceMenu(Scanner scanner) {
-        while (true) {
-            System.out.println("\nRail Fence Cipher");
-            System.out.println("1. Encrypt");
-            System.out.println("2. Decrypt");
-            System.out.println("3. Back");
-            System.out.print("Enter your choice: ");
-            int choice = scanner.nextInt();
-            scanner.nextLine();
-
-            if (choice == 3) return;
-
-            System.out.print("Enter text: ");
-            String text = scanner.nextLine();
-
-            if (choice == 1) {
-                System.out.println("Encrypted: " + railFenceEncrypt(text));
-            } else if (choice == 2) {
-                System.out.println("Decrypted: " + railFenceDecrypt(text));
-            } else {
-                System.out.println("Invalid choice, try again.");
-            }
-        }
+    private static byte[] decryptAES(byte[] ciphertext, SecretKey key) {
+        return encryptAES(ciphertext, key);
     }
 
-    private static void productCipherMenu(Scanner scanner) {
-        while (true) {
-            System.out.println("\nProduct Cipher (Playfair + Rail Fence)");
-            System.out.println("1. Encrypt");
-            System.out.println("2. Decrypt");
-            System.out.println("3. Back");
-            System.out.print("Enter your choice: ");
-            int choice = scanner.nextInt();
-            scanner.nextLine();
+    private static void simulateBitError(byte[] ciphertext, SecretKey key) {
+        byte[] corruptedCiphertext = ciphertext.clone();
+        int startCorrupt = 4;  // Corrupting the 5th byte onward
+        int blockSize = 16;  // AES block size
 
-            if (choice == 3) return;
+        System.out.println("\n===================================");
+        System.out.println(" SIMULATING BIT ERROR IN CIPHERTEXT");
+        System.out.println("=====================================");
 
-            System.out.print("Enter text: ");
-            String text = scanner.nextLine();
-            System.out.print("Enter Playfair key: ");
-            String key = scanner.nextLine();
-
-            if (choice == 1) {
-                System.out.println("Encrypted: " + productCipherEncrypt(text, key));
-            } else if (choice == 2) {
-                System.out.println("Decrypted: " + productCipherDecrypt(text, key));
-            } else {
-                System.out.println("Invalid choice, try again.");
-            }
+        // Introduce bit errors across one full AES block
+        for (int i = startCorrupt; i < startCorrupt + blockSize && i < corruptedCiphertext.length; i++) {
+            corruptedCiphertext[i] ^= 0xFF; // Flip all bits in this byte
         }
+    
+        System.out.println("[Person A] Original Ciphertext (Base64): " + Base64.getEncoder().encodeToString(ciphertext));
+        System.out.println("[Person B] Corrupted Ciphertext (Base64): " + Base64.getEncoder().encodeToString(corruptedCiphertext));
+        System.out.println("[Person B] Bit error introduced in block starting at byte position: " + startCorrupt + "\n");
+    
+        System.out.println("Explanation: AES encryption works in blocks (16 bytes each).");
+        System.out.println("Flipping bits in a block will cause full corruption in that block.");
+        System.out.println("This results in garbled output or total decryption failure.\n");
+    
+        //  Decrypt the corrupted message
+        byte[] corruptedDecryption = decryptAES(corruptedCiphertext, key);
+        System.out.println("[Person B] Decrypted Message (With Bit Error): " + new String(corruptedDecryption) + "\n");
     }
-
-    public static class ManualRSAEncryption {  
-        private static final int BIT_LENGTH = 1024;
-        private static final SecureRandom random = new SecureRandom();
-        
-        private BigInteger n, e, d;
-
-        public ManualRSAEncryption() {
-            BigInteger p = BigInteger.probablePrime(BIT_LENGTH / 2, random);
-            BigInteger q = BigInteger.probablePrime(BIT_LENGTH / 2, random);
-            n = p.multiply(q);
-            BigInteger phi = (p.subtract(BigInteger.ONE)).multiply(q.subtract(BigInteger.ONE));
-
-            e = new BigInteger("65537");
-            d = e.modInverse(phi);
-        }
-
-        public BigInteger encryptRSA(BigInteger message) {
-            return message.modPow(e, n);
-        }
-
-        public BigInteger decryptRSA(BigInteger ciphertext) {
-            return ciphertext.modPow(d, n);
-        }
-
-        public BigInteger getPublicKey() {
-            return e;
-        }
-
-        public BigInteger getModulus() {
-            return n;
-        }
-
-        public static void generateRSAKeyPair(Scanner scanner) {
-            System.out.println("\n=====================================================================");
-            System.out.println(" SIMULATING PERSON A & B COMMUNICATION FOR RSA & AES HYBRID ENCRYPTION ");
-            System.out.println("========================================================================");
-
-            // Create instance of ManualRSAEncryption correctly
-            ManualRSAEncryption rsa = new ManualRSAEncryption();
-            BigInteger publicKeyB = rsa.getPublicKey();
-            BigInteger modulusB = rsa.getModulus();
-
-            // Step 2: Person A sends AES key (Encrypted with RSA)
-            byte[] aesKey = generateAESKey();
-            System.out.println("\n[Person A] AES Key (Base64): " + Base64.getEncoder().encodeToString(aesKey));
-
-            BigInteger aesKeyBigInt = new BigInteger(aesKey);
-            BigInteger encryptedAESKey = aesKeyBigInt.modPow(publicKeyB, modulusB);
-            System.out.println("[Person A] Encrypted AES Key: " + encryptedAESKey);
-
-            // Step 3: Person B receives AES key and decrypts it
-            BigInteger decryptedAESKeyBigInt = encryptedAESKey.modPow(rsa.d, rsa.n);
-            byte[] decryptedAESKey = decryptedAESKeyBigInt.toByteArray();
-            System.out.println("[Person B] Decrypted AES Key (Base64): " + Base64.getEncoder().encodeToString(decryptedAESKey));
-
-            // Step 4: Person A encrypts a message using the shared AES key
-            System.out.print("\n[Person A] Enter message to send: ");
-            String message = scanner.nextLine();
-            byte[] encryptedMessage = encryptAES(message.getBytes(), aesKey);
-            System.out.println("[Person A] Encrypted Message (Base64): " + Base64.getEncoder().encodeToString(encryptedMessage));
-
-            // Step 5: Person B decrypts the received message
-            byte[] decryptedMessage = decryptAES(encryptedMessage, aesKey);
-            System.out.println("[Person B] Decrypted Message: " + new String(decryptedMessage));
-
-            // Step 6: Simulating Bit Error in Ciphertext
-            simulateBitError(encryptedMessage, aesKey);
-        }
-
-        //  Fixed AES Key Generation
-        private static byte[] generateAESKey() {
-            SecureRandom random = new SecureRandom(); // Create a new instance inside the method
-            byte[] key = new byte[16];
-            random.nextBytes(key);
-            return key;
-        }
-
-        // AES Encryption using XOR
-        private static byte[] encryptAES(byte[] plaintext, byte[] key) {
-            byte[] encrypted = new byte[plaintext.length];
-            for (int i = 0; i < plaintext.length; i++) {
-                encrypted[i] = (byte) (plaintext[i] ^ key[i % key.length]); 
-            }
-            return encrypted;
-        }
-
-        //  AES Decryption (XOR Reverse)
-        private static byte[] decryptAES(byte[] ciphertext, byte[] key) {
-            return encryptAES(ciphertext, key);
-        }
-
-        //  Simulating Bit Error in Ciphertext
-        private static void simulateBitError(byte[] ciphertext, byte[] key) {
-            byte[] corruptedCiphertext = ciphertext.clone();
-            int blockSize = 16;  // AES block size
-            int startCorrupt = 4;  // Corrupting from the 5th byte onward
-        
-            System.out.println("\n===================================");
-            System.out.println(" SIMULATING BIT ERROR IN CIPHERTEXT...");
-            System.out.println("======================================\n");
-        
-            // Introduce bit errors across one full AES block
-            for (int i = startCorrupt; i < startCorrupt + blockSize && i < corruptedCiphertext.length; i++) {
-                corruptedCiphertext[i] ^= 0xFF; // Flip all bits in this byte
-            }
-        
-            System.out.println("[Person A] Original Ciphertext (Base64): " + Base64.getEncoder().encodeToString(ciphertext));
-            System.out.println("[Person B] Corrupted Ciphertext (Base64): " + Base64.getEncoder().encodeToString(corruptedCiphertext));
-            System.out.println("[Person B] Bit error introduced in block starting at byte position: " + startCorrupt + "\n");
-        
-            System.out.println("Explanation: AES encryption works in blocks (16 bytes each).");
-            System.out.println("Flipping bits in a block will cause full corruption in that block.");
-            System.out.println("This results in garbled output or total decryption failure.\n");
-        
-            //  Decrypt the corrupted message
-            byte[] corruptedDecryption = decryptAES(corruptedCiphertext, key);
-            System.out.println("[Person B] Decrypted Message (With Bit Error): " + new String(corruptedDecryption) + "\n");
-        
-            System.out.println("====================================\n");
-        }
-    }
-    }
+}
